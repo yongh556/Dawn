@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>同行主页 - 完整交互版</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --milk-green: #A8E6CF; --milk-bg: #F7FCFA; --text-main: #2C3E50;
+            --text-sub: #95A5A6; --border: #F0F4F2; --white: #FFFFFF;
+        }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; }
+        body { font-family: -apple-system, sans-serif; background: var(--milk-bg); color: var(--text-main); overflow-x: hidden; }
+        /* 顶部封面 */
+        .cover { height: 200px; background: #E0E0E0; position: relative; overflow: hidden; }
+        .cover-img { width: 100%; height: 100%; object-fit: cover; }
+        .back-btn { position: absolute; top: 50px; left: 20px; width: 40px; height: 40px; background: rgba(0,0,0,0.2); backdrop-filter: blur(10px); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; border: 0.5px solid rgba(255,255,255,0.3); z-index: 10; }
+        /* 个人信息卡 */
+        .profile-card { margin: -40px 16px 0; background: var(--white); border-radius: 24px; padding: 20px; position: relative; box-shadow: 0 8px 30px rgba(0,0,0,0.04); text-align: center; }
+        .avatar { width: 90px; height: 90px; border-radius: 32px; border: 4px solid var(--white); margin: -65px auto 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); background: #EEE; object-fit: cover; }
+        .name { font-size: 22px; font-weight: 800; }
+        .signature { font-size: 13px; color: var(--text-sub); margin: 8px 20px 0; line-height: 1.4; }
+        /* 模块标题 */
+        .mod-title { padding: 24px 20px 12px; font-size: 15px; font-weight: 700; color: var(--text-main); display: flex; align-items: center; justify-content: space-between; }
+        .mod-title span { font-size: 12px; color: var(--milk-green); font-weight: 500; }
+        /* 朋友圈预览项 */
+        .cell-group { margin: 0 16px; background: var(--white); border-radius: 20px; border: 0.5px solid var(--border); overflow: hidden; }
+        .cell { padding: 18px; display: flex; align-items: center; cursor: pointer; }
+        .cell:active { background: #F5F5F5; }
+        .cell-info { flex: 1; }
+        .moment-imgs { display: flex; gap: 6px; margin-top: 10px; }
+        .m-img { width: 64px; height: 64px; border-radius: 10px; background: #F0F4F2; object-fit: cover; border: 0.5px solid var(--border); }
+        /* 动态档案网格 */
+        .archive-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 0 16px; }
+        .archive-item { background: var(--white); padding: 16px; border-radius: 18px; border: 0.5px solid var(--border); }
+        .archive-label { font-size: 11px; color: var(--text-sub); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .archive-val { font-size: 14px; font-weight: 700; color: var(--text-main); }
+        /* 最近足迹流 */
+        .footprint-list { margin: 0 20px; border-left: 2px solid var(--milk-green); padding-left: 20px; }
+        .foot-node { position: relative; padding-bottom: 24px; }
+        .foot-node::before { content: ""; position: absolute; left: -26px; top: 4px; width: 10px; height: 10px; background: var(--white); border: 2.5px solid var(--milk-green); border-radius: 50%; }
+        .foot-text { font-size: 14px; line-height: 1.5; margin-bottom: 4px; }
+        .foot-time { font-size: 11px; color: var(--text-sub); }
+        /* 底部按钮 */
+        .actions { position: fixed; bottom: 30px; left: 16px; right: 16px; display: flex; gap: 10px; z-index: 100; }
+        .btn { flex: 1; height: 52px; border-radius: 16px; border: none; font-weight: 700; font-size: 15px; display: flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 8px 20px rgba(0,0,0,0.05); }
+        .btn-msg { background: var(--milk-green); color: white; }
+        .btn-more { background: white; color: var(--text-main); border: 0.5px solid var(--border); }
+        /* --- 底部菜单菜单样式 --- */
+        .sheet-mask { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: none; z-index: 1000; opacity: 0; transition: opacity 0.3s; }
+        .action-sheet { position: fixed; left: 0; right: 0; bottom: -100%; background: var(--white); border-radius: 24px 24px 0 0; transition: bottom 0.3s cubic-bezier(0.25, 1, 0.5, 1); z-index: 1001; padding-bottom: env(safe-area-inset-bottom); }
+        .sheet-active { overflow: hidden; }
+        .sheet-active .sheet-mask { display: block; opacity: 1; }
+        .sheet-active .action-sheet { bottom: 0; }
+        .sheet-item { padding: 20px; text-align: center; font-size: 16px; font-weight: 600; border-bottom: 0.5px solid var(--border); cursor: pointer; }
+        .sheet-item:active { background: #F9F9F9; }
+        .sheet-item.danger { color: #FF5252; }
+        .sheet-cancel { padding: 20px; text-align: center; font-size: 16px; color: var(--text-sub); cursor: pointer; }
+        /* --- 新增：中央对话框样式 --- */
+        .custom-modal-mask { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: none; align-items: center; justify-content: center; z-index: 3000; backdrop-filter: blur(4px); animation: fadeIn 0.2s; }
+        .custom-modal { width: 85%; max-width: 320px; background: var(--white); border-radius: 24px; overflow: hidden; box-shadow: 0 15px 40px rgba(0,0,0,0.15); transform: scale(0.9); transition: 0.2s; }
+        .modal-show .custom-modal { transform: scale(1); }
+        .modal-body { padding: 24px 20px; text-align: center; }
+        .modal-title { font-size: 17px; font-weight: 800; margin-bottom: 10px; }
+        .modal-text { font-size: 14px; color: var(--text-sub); line-height: 1.5; }
+        .modal-input { width: 100%; border: 1px solid var(--border); background: var(--milk-bg); padding: 12px; border-radius: 12px; margin-top: 15px; outline: none; font-size: 15px; }
+        .modal-footer { display: flex; border-top: 0.5px solid var(--border); }
+        .modal-btn { flex: 1; padding: 16px; border: none; background: none; font-size: 15px; font-weight: 700; cursor: pointer; }
+        .modal-btn.cancel { color: var(--text-sub); }
+        .modal-btn.confirm { color: var(--milk-green); border-left: 0.5px solid var(--border); }
+        .modal-btn.danger { color: #FF5252; border-left: 0.5px solid var(--border); }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    </style>
+</head>
+<body>
+<div id="partner-profile">
+    <div class="cover">
+        <img id="api-cover" class="cover-img" src="">
+        <div class="back-btn" onclick="history.back()"><i class="fas fa-chevron-left"></i></div>
+    </div>
+    <div class="profile-card">
+        <img id="api-avatar" class="avatar" src="">
+        <div id="api-name" class="name">加载中...</div>
+        <div id="api-sign" class="signature">正在从千风中获取人设档案...</div>
+    </div>
+    <div class="mod-title">风闻集录 <span onclick="alert('跳转完整列表')">查看全部 <i class="fas fa-chevron-right"></i></span></div>
+    <div class="cell-group">
+        <div class="cell" onclick="alert('跳转朋友圈')">
+            <div class="cell-info">
+                <div style="font-size: 14px; color: var(--text-sub);">过往动态预览</div>
+                <div id="api-moments" class="moment-imgs"></div>
+            </div>
+        </div>
+    </div>
+    <div class="mod-title">风之档案</div>
+    <div id="api-archives" class="archive-grid"></div>
+    <div class="mod-title">最近足迹</div>
+    <div id="api-footprints" class="footprint-list"></div>
+    <div style="height: 120px;"></div>
+    <div class="actions">
+        <button class="btn btn-more" onclick="toggleSheet(true)"><i class="fas fa-ellipsis-h"></i></button>
+        <button class="btn btn-msg" onclick="alert('发起会话')"><i class="fas fa-paper-plane"></i> 发起传风信</button>
+    </div>
+</div>
+<div id="actionSheetContainer">
+    <div class="sheet-mask" onclick="toggleSheet(false)"></div>
+    <div class="action-sheet">
+        <div class="sheet-item" onclick="modifyNote()">修改备注名</div>
+        <div class="sheet-item danger" onclick="confirmBlock()">拉黑伙伴</div>
+        <div class="sheet-item danger" onclick="confirmDelete()">删除同行关系</div>
+        <div style="height: 8px; background: var(--milk-bg);"></div>
+        <div class="sheet-cancel" onclick="toggleSheet(false)">取消</div>
+    </div>
+</div>
+<div id="customModal" class="custom-modal-mask">
+    <div class="custom-modal" id="modalContent"></div>
+</div>
+<script>
+    const partnerData = {
+        name: "钟离",
+        signature: "既然契约已成，便同行吧。旅途总有一天会迎来终点，不必匆忙。",
+        avatar: "https://api.dicebear.com/7.x/bottts/svg?seed=Zhongli",
+        cover: "https://images.unsplash.com/photo-1534067783941-51c9c23ecefd?w=800",
+        moments: [
+            "https://images.unsplash.com/photo-1528114039593-4366cc08227d?w=200",
+            "https://images.unsplash.com/photo-1505333306404-5e1350a4185d?w=200",
+            "https://images.unsplash.com/photo-1444858291040-58f756a3bdd6?w=200"
+        ],
+        archives: [
+            { label: "常驻区域", val: "璃月 · 往生堂" },
+            { label: "当前状态", val: "听戏品茗中" },
+            { label: "风闻标签", val: "#博古通今 #契约" },
+            { label: "喜好物品", val: "霓裳花、老茶" }
+        ],
+        footprints: [
+            { text: "在三碗不过岗听了一场关于《创龙点睛》的评书。", time: "1小时前" },
+            { text: "前往琥牢山探访了老友，并留下了一壶好茶。", time: "昨天" },
+            { text: "于璃月港港口漫步，观察着集市的变迁。", time: "3天前" }
+        ]
+    };
+    function renderProfile(data) {
+        document.getElementById('api-name').innerText = data.name;
+        document.getElementById('api-sign').innerText = data.signature;
+        document.getElementById('api-avatar').src = data.avatar;
+        document.getElementById('api-cover').src = data.cover;
+        const momentBox = document.getElementById('api-moments');
+        momentBox.innerHTML = data.moments.map(img => `<img class="m-img" src="${img}">`).join('');
+        const archiveBox = document.getElementById('api-archives');
+        archiveBox.innerHTML = data.archives.map(item => `
+            <div class="archive-item">
+                <div class="archive-label">${item.label}</div>
+                <div class="archive-val">${item.val}</div>
+            </div>
+        `).join('');
+        const footBox = document.getElementById('api-footprints');
+        footBox.innerHTML = data.footprints.map(node => `
+            <div class="foot-node">
+                <div class="foot-text">${node.text}</div>
+                <div class="foot-time">${node.time}</div>
+            </div>
+        `).join('');
+    }
+    /* 菜单控制 */
+    function toggleSheet(show) {
+        document.body.classList.toggle('sheet-active', show);
+    }
+    /* --- 新增：中央对话框控制逻辑 --- */
+    function showCustomModal(config) {
+        const mask = document.getElementById('customModal');
+        const content = document.getElementById('modalContent');
+        content.innerHTML = `
+            <div class="modal-body">
+                <div class="modal-title">${config.title}</div>
+                <div class="modal-text">${config.text}</div>
+                ${config.showInput ? `<input type="text" id="mInput" class="modal-input" placeholder="${config.placeholder}" value="${config.inputValue || ''}">` : ''}
+            </div>
+            <div class="modal-footer">
+                <button class="modal-btn cancel" onclick="closeCustomModal()">取消</button>
+                <button class="modal-btn ${config.isDanger ? 'danger' : 'confirm'}" id="mConfirm">确定</button>
+            </div>
+        `;
+        mask.style.display = 'flex';
+        setTimeout(() => mask.classList.add('modal-show'), 10);
+        document.getElementById('mConfirm').onclick = () => {
+            const inputVal = config.showInput ? document.getElementById('mInput').value : null;
+            config.onConfirm(inputVal);
+            closeCustomModal();
+        };
+    }
+    function closeCustomModal() {
+        const mask = document.getElementById('customModal');
+        mask.classList.remove('modal-show');
+        setTimeout(() => mask.style.display = 'none', 200);
+    }
+    /* 替换后的点击功能 */
+    function modifyNote() {
+        toggleSheet(false);
+        showCustomModal({
+            title: "修改备注名",
+            text: "请为你的伙伴设置一个专属称呼",
+            showInput: true,
+            placeholder: "输入备注...",
+            inputValue: document.getElementById('api-name').innerText,
+            onConfirm: (val) => {
+                if(val) document.getElementById('api-name').innerText = val;
+            }
+        });
+    }
+    function confirmBlock() {
+        toggleSheet(false);
+        showCustomModal({
+            title: "确定拉黑？",
+            text: "拉黑后将不再接收对方的消息通知。",
+            isDanger: true,
+            onConfirm: () => {
+                showCustomModal({ title: "提示", text: "已成功拉黑该伙伴", onConfirm: () => {} });
+            }
+        });
+    }
+    function confirmDelete() {
+        toggleSheet(false);
+        showCustomModal({
+            title: "解除同行关系",
+            text: "确定要解除吗？此操作将清空所有共同记忆。",
+            isDanger: true,
+            onConfirm: () => {
+                history.back();
+            }
+        });
+    }
+    window.onload = () => renderProfile(partnerData);
+</script>
+</body>
+</html>
+

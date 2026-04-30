@@ -7,5 +7,12 @@ export default defineConfig({
     port: 5173,
     host: true
   },
-  base: '/Dawn/'
+  base: '/Dawn/',
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: undefined
+      }
+    }
+  }
 })
